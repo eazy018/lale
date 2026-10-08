@@ -359,6 +359,102 @@
     100%{ transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(1.1) rotate(var(--rot)); opacity: 0; }
   }
 
+  /* ===== SORPRESA (regalo -> pastel -> yay) ===== */
+  @keyframes letter-leave{
+    0%{ opacity: 1; transform: translate(-50%,-50%) scale(1); }
+    100%{ opacity: 0; transform: translate(-50%,-62%) scale(0.6); }
+  }
+  .letter.leave{
+    animation: letter-leave 0.65s ease-in forwards;
+    pointer-events: none;
+  }
+  .surprise{
+    position: fixed;
+    z-index: 10;
+    top: 50%; left: 50%;
+    transform: translate(-50%,-50%) scale(0.3);
+    width: min(88vw, 420px);
+    background: var(--paper);
+    border: 1px solid var(--paper-edge);
+    border-radius: 16px;
+    padding: 1.8rem 1.4rem 1.6rem;
+    box-shadow: 0 30px 60px rgba(170,110,0,0.35);
+    text-align: center;
+    opacity: 0;
+    pointer-events: none;
+  }
+  @keyframes surprise-in{
+    0%{ opacity: 0; transform: translate(-50%,-50%) scale(0.3) rotate(-6deg); }
+    60%{ opacity: 1; transform: translate(-50%,-50%) scale(1.06) rotate(2deg); }
+    100%{ opacity: 1; transform: translate(-50%,-50%) scale(1) rotate(0deg); }
+  }
+  .surprise.show{
+    animation: surprise-in 0.9s cubic-bezier(.2,.8,.3,1) forwards;
+    pointer-events: auto;
+  }
+  .surprise-title{
+    font-family: 'Dancing Script', cursive;
+    font-size: 2rem;
+    color: var(--seal-dark);
+    margin: 0 0 0.4rem;
+  }
+  .surprise-stage{
+    position: relative;
+    height: 240px;
+    width: 100%;
+  }
+  .surprise-stage img{
+    position: absolute;
+    top: 0; left: 50%;
+    height: 100%;
+    width: auto;
+    max-width: 100%;
+    transform: translateX(-50%) scale(1);
+    object-fit: contain;
+    cursor: pointer;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    -webkit-user-drag: none;
+  }
+  .surprise-stage img.hidden{
+    opacity: 0;
+    transform: translateX(-50%) scale(0.6);
+    pointer-events: none;
+  }
+  .gift{ animation: gift-bob 1.8s ease-in-out infinite; }
+  @keyframes gift-bob{
+    0%,100%{ transform: translateX(-50%) translateY(0) rotate(-2deg); }
+    50%{ transform: translateX(-50%) translateY(-8px) rotate(2deg); }
+  }
+  .gift.opening{
+    animation: gift-open 0.6s ease-in forwards;
+  }
+  @keyframes gift-open{
+    0%{ transform: translateX(-50%) rotate(0deg) scale(1); }
+    20%{ transform: translateX(calc(-50% - 8px)) rotate(-6deg) scale(1.05); }
+    40%{ transform: translateX(calc(-50% + 8px)) rotate(6deg) scale(1.1); }
+    60%{ transform: translateX(calc(-50% - 6px)) rotate(-5deg) scale(1.15); }
+    100%{ transform: translateX(-50%) rotate(0deg) scale(1.4); opacity: 0; }
+  }
+  .cake.vibrate{ animation: cake-vibrate 0.12s linear infinite; }
+  @keyframes cake-vibrate{
+    0%{ transform: translateX(calc(-50% - 7px)) rotate(-3deg); }
+    50%{ transform: translateX(calc(-50% + 7px)) rotate(3deg); }
+    100%{ transform: translateX(calc(-50% - 7px)) rotate(-3deg); }
+  }
+  .slice.pop{ animation: slice-pop 0.7s cubic-bezier(.2,.9,.3,1.4) forwards; }
+  @keyframes slice-pop{
+    0%{ transform: translateX(-50%) scale(0.4) rotate(-8deg); opacity: 0; }
+    100%{ transform: translateX(-50%) scale(1) rotate(0deg); opacity: 1; }
+  }
+  .surprise-hint{
+    font-family: 'Dancing Script', cursive;
+    font-size: 1.15rem;
+    color: var(--seal-dark);
+    margin: 0.6rem 0 0;
+    min-height: 1.6em;
+    animation: hint-pulse 1.8s ease-in-out infinite;
+  }
+
   @media (prefers-reduced-motion: reduce){
     .ambient span, .hint, .sticker, .peek-hint{ animation: none; }
     .flap, .letter, .seal{ transition-duration: 0.2s; }
@@ -398,10 +494,21 @@
     </div>
   </div>
 
+  <div class="surprise" id="surprise">
+    <h2 class="surprise-title" id="surpriseTitle">Tengo una sorpresa para ti</h2>
+    <div class="surprise-stage">
+      <img class="gift" id="giftImg" src="assets/regalo.gif" alt="">
+      <img class="cake hidden" id="cakeImg" src="assets/pastel-velas.gif" alt="">
+      <img class="slice hidden" id="sliceImg" src="assets/pastel-cortado.gif" alt="">
+    </div>
+    <p class="surprise-hint" id="surpriseHint">toca el regalo</p>
+  </div>
+
   <div class="burst" id="burst"></div>
 </div>
 
 <audio id="bgMusic" src="assets/musica.mp3" loop preload="auto"></audio>
+<audio id="yaySound" src="assets/yay.mp3" preload="auto"></audio>
 
 <script>
   const ambient = document.getElementById('ambient');
@@ -491,6 +598,7 @@
     } else {
       msgPeek.style.display = 'none';
       msgSign.style.display = 'block';
+      scheduleSurprise();
     }
   }
 
@@ -595,6 +703,125 @@
       letter.removeEventListener('animationend', onGrowShake);
     }
   });
+
+  // ===== SORPRESA: carta -> regalo -> pastel -> agitar -> yay =====
+  const surprise = document.getElementById('surprise');
+  const surpriseTitle = document.getElementById('surpriseTitle');
+  const surpriseHint = document.getElementById('surpriseHint');
+  const giftImg = document.getElementById('giftImg');
+  const cakeImg = document.getElementById('cakeImg');
+  const sliceImg = document.getElementById('sliceImg');
+  const yaySound = document.getElementById('yaySound');
+
+  let surpriseScheduled = false;
+  function scheduleSurprise(){
+    if(surpriseScheduled) return;
+    surpriseScheduled = true;
+    // 2 segundos despues del ultimo mensaje se va la carta y entra la sorpresa
+    setTimeout(() => {
+      letter.classList.remove('grow-shake');
+      letter.classList.add('leave');
+      setTimeout(() => {
+        surprise.classList.add('show');
+        heartBurst(24);
+      }, 700);
+    }, 2000);
+  }
+
+  let giftOpened = false;
+  let cakeCut = false;
+  let cakeTapReady = false;
+  let shakes = 0;
+  let lastShake = 0;
+  let lx = null, ly = null, lz = null;
+  let vibrateTimer = null;
+  const SHAKES_NEEDED = 6;
+
+  function onMotion(e){
+    const a = e.accelerationIncludingGravity;
+    if(!a || a.x == null) return;
+    if(lx === null){ lx = a.x; ly = a.y; lz = a.z; return; }
+    const d = Math.abs(a.x - lx) + Math.abs(a.y - ly) + Math.abs(a.z - lz);
+    lx = a.x; ly = a.y; lz = a.z;
+    const now = Date.now();
+    if(d > 22 && now - lastShake > 120){
+      lastShake = now;
+      shakes++;
+      cakeImg.classList.add('vibrate');
+      if(navigator.vibrate) navigator.vibrate(60);
+      clearTimeout(vibrateTimer);
+      vibrateTimer = setTimeout(() => cakeImg.classList.remove('vibrate'), 400);
+      if(shakes >= SHAKES_NEEDED) cutCake();
+    }
+  }
+
+  function startShakeListening(){
+    if(typeof DeviceMotionEvent !== 'undefined' &&
+       typeof DeviceMotionEvent.requestPermission === 'function'){
+      // iPhone: hay que pedir permiso dentro de un toque
+      DeviceMotionEvent.requestPermission().then(r => {
+        if(r === 'granted') window.addEventListener('devicemotion', onMotion);
+      }).catch(() => {});
+    } else {
+      window.addEventListener('devicemotion', onMotion);
+    }
+  }
+
+  giftImg.addEventListener('click', () => {
+    if(giftOpened) return;
+    giftOpened = true;
+    startShakeListening();
+
+    // "desbloquea" el audio con el toque para que suene luego sin problema
+    yaySound.muted = true;
+    yaySound.play().then(() => {
+      yaySound.pause();
+      yaySound.currentTime = 0;
+      yaySound.muted = false;
+    }).catch(() => { yaySound.muted = false; });
+
+    giftImg.classList.add('opening');
+    surpriseHint.textContent = '';
+    setTimeout(() => {
+      giftImg.classList.add('hidden');
+      cakeImg.classList.remove('hidden');
+      surpriseTitle.textContent = '¡Agita el teléfono!';
+      surpriseHint.textContent = 'agítalo fuerte';
+    }, 600);
+
+    // respaldo por si el telefono no detecta el movimiento
+    setTimeout(() => {
+      if(cakeCut) return;
+      cakeTapReady = true;
+      surpriseHint.textContent = 'o toca el pastel';
+    }, 6600);
+  });
+
+  cakeImg.addEventListener('click', () => {
+    if(cakeTapReady) cutCake();
+  });
+
+  function cutCake(){
+    if(cakeCut) return;
+    cakeCut = true;
+    window.removeEventListener('devicemotion', onMotion);
+    clearTimeout(vibrateTimer);
+    cakeImg.classList.remove('vibrate');
+    cakeImg.classList.add('hidden');
+    sliceImg.classList.remove('hidden');
+    sliceImg.classList.add('pop');
+    surpriseTitle.textContent = '¡Feliz cumpleaños!';
+    surpriseHint.textContent = '';
+
+    const prevVol = bgMusic.volume;
+    bgMusic.volume = Math.min(prevVol, 0.25);
+    yaySound.currentTime = 0;
+    yaySound.play().catch(() => {});
+    yaySound.addEventListener('ended', () => { bgMusic.volume = prevVol; }, { once: true });
+
+    heartBurst(70);
+    setTimeout(() => heartBurst(50), 500);
+  }
 </script>
 </body>
 </html>
