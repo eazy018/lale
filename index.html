@@ -567,14 +567,17 @@
 
     envelopeTaps++;
 
-    if(envelopeTaps < 3){
-      const dist = 70 + Math.random()*35;
-      envelopeDodge.style.transform = 'translateY(' + (dodgeDir * -dist) + 'px)';
+    if(envelopeTaps < 7){
+      const dx = (Math.random()*180 - 90);
+      const dy = dodgeDir * -(70 + Math.random()*50);
+      const scale = 0.6 + Math.random()*0.8;
+      envelopeDodge.style.transform =
+        'translate(' + dx + 'px,' + dy + 'px) scale(' + scale.toFixed(2) + ')';
       dodgeDir *= -1;
       return;
     }
 
-    envelopeDodge.style.transform = 'translateY(0)';
+    envelopeDodge.style.transform = 'translate(0,0) scale(1)';
     clearInterval(envelopePulse);
     envelope.classList.remove('pulse');
     envelope.classList.add('open');
