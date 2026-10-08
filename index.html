@@ -183,6 +183,51 @@
     50%{ opacity: 1; }
   }
 
+  /* ===== FLYBY IMAGES (cruzan la pantalla tipo avioncito) ===== */
+  .flyby-layer{
+    position: fixed;
+    inset: 0;
+    overflow: hidden;
+    pointer-events: none;
+    z-index: 3;
+  }
+  .flyby{
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: var(--size, 90px);
+    opacity: 0;
+    animation: fly-across var(--dur, 13s) linear infinite;
+    animation-delay: var(--delay, 0s);
+    animation-fill-mode: backwards;
+  }
+  @keyframes fly-across{
+    0%{   transform: translate(var(--x0), var(--y0)); opacity: 0; }
+    6%{   opacity: 1; }
+    94%{  opacity: 1; }
+    100%{ transform: translate(var(--x1), var(--y1)); opacity: 0; }
+  }
+  .flyby-spin{
+    animation: cartoon-wiggle 8s steps(1) infinite;
+  }
+  .flyby-spin img{
+    display: block;
+    width: 100%;
+    height: auto;
+    filter: drop-shadow(0 8px 10px rgba(150,100,10,0.3));
+  }
+  @keyframes cartoon-wiggle{
+    0%{   transform: rotate(-4deg) translateY(0); }
+    12.5%{ transform: rotate(3deg) translateY(-4px); }
+    25%{  transform: rotate(-2deg) translateY(2px); }
+    37.5%{ transform: rotate(4deg) translateY(-3px); }
+    50%{  transform: rotate(-3deg) translateY(1px); }
+    62.5%{ transform: rotate(2deg) translateY(-4px); }
+    75%{  transform: rotate(-4deg) translateY(0); }
+    87.5%{ transform: rotate(3deg) translateY(2px); }
+    100%{ transform: rotate(-4deg) translateY(0); }
+  }
+
   /* ===== LETTER ===== */
   .letter{
     position: fixed;
@@ -325,9 +370,10 @@
 
 <div class="scene" id="scene">
   <div class="ambient" id="ambient"></div>
+  <div class="flyby-layer" id="flybyLayer"></div>
 
   <div class="intro" id="intro">
-    <h1 class="intro-title">para ti</h1>
+    <h1 class="intro-title">&lt;3</h1>
     <div class="envelope-dodge" id="envelopeDodge">
       <div class="envelope-outer">
         <div class="envelope" id="envelope">
@@ -368,6 +414,47 @@
     s.style.transform = 'scale(' + (0.6 + Math.random()*0.9) + ')';
     ambient.appendChild(s);
   }
+
+  const flybyLayer = document.getElementById('flybyLayer');
+  const flybyImages = [
+    'assets/gato-angel.gif',
+    'assets/banner-cumple.gif',
+    'assets/pastel-anim.gif',
+    'assets/hellokitty-confeti.gif',
+    'assets/kuromi-pastel.gif',
+    'assets/sanrio-grupo.jpg',
+    'assets/gato-sombrero1.jpg',
+    'assets/gato-sombrero2.jpg',
+    'assets/gatito-pastel.jpg'
+  ];
+  const diagonals = [
+    { x0: '-25vw', y0: '115vh', x1: '125vw', y1: '-25vh' }, // abajo-izq -> arriba-der
+    { x0: '125vw', y0: '-25vh', x1: '-25vw', y1: '115vh' }, // arriba-der -> abajo-izq
+    { x0: '-25vw', y0: '-25vh', x1: '125vw', y1: '115vh' }, // arriba-izq -> abajo-der
+    { x0: '125vw', y0: '115vh', x1: '-25vw', y1: '-25vh' }  // abajo-der -> arriba-izq
+  ];
+
+  flybyImages.forEach((src, i) => {
+    const diag = diagonals[i % diagonals.length];
+    const wrap = document.createElement('div');
+    wrap.className = 'flyby';
+    wrap.style.setProperty('--x0', diag.x0);
+    wrap.style.setProperty('--y0', diag.y0);
+    wrap.style.setProperty('--x1', diag.x1);
+    wrap.style.setProperty('--y1', diag.y1);
+    wrap.style.setProperty('--size', (70 + Math.random()*45) + 'px');
+    wrap.style.setProperty('--dur', (11 + Math.random()*6) + 's');
+    wrap.style.setProperty('--delay', (i*1.4 + Math.random()*2) + 's');
+
+    const spin = document.createElement('div');
+    spin.className = 'flyby-spin';
+    const img = document.createElement('img');
+    img.src = src;
+    img.alt = '';
+    spin.appendChild(img);
+    wrap.appendChild(spin);
+    flybyLayer.appendChild(wrap);
+  });
 
   const envelope = document.getElementById('envelope');
   const envelopeDodge = document.getElementById('envelopeDodge');
